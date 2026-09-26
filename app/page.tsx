@@ -10,6 +10,20 @@ export default function Home() {
   const [statusAmira, setStatusAmira] = useState(true);
   const [statusQr, setStatusQr] = useState(true);
 
+  // State untuk jam digital
+  const [time, setTime] = useState(new Date());
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Interval untuk jam
+  useEffect(() => {
+    setIsMounted(true);
+    const timer = setInterval(() => {
+      setTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   // Ambil status dari Vercel Edge Config saat halaman dimuat
   useEffect(() => {
     const fetchStatus = async () => {
@@ -20,7 +34,7 @@ export default function Home() {
         });
         const data = await res.json();
 
-        // PERBAIKAN: Cari data di dalam Array berdasarkan 'key'-nya
+        // Cari data di dalam Array berdasarkan 'key'-nya
         const amiraItem = data.find(
           (item: any) => item.key === "maintenance_amira",
         );
@@ -51,8 +65,6 @@ export default function Home() {
     currentActiveStatus: boolean,
     event: any,
   ) => {
-    // currentActiveStatus adalah status SEKARANG sebelum diklik.
-    // Jika true, artinya kita mau mematikan (maintenance = true).
     const willBeMaintenance = currentActiveStatus;
 
     if (currentActiveStatus) {
@@ -77,7 +89,6 @@ export default function Home() {
       const data = await res.json();
 
       if (data.success) {
-        // Update state lokal supaya toggle bergeser
         if (appName === "Toko Roti Amira") setStatusAmira(!willBeMaintenance);
         if (appName === "QR Absensi") setStatusQr(!willBeMaintenance);
 
@@ -106,12 +117,23 @@ export default function Home() {
             Dashboard Kontrol Aplikasi Terpusat
           </p>
         </div>
-        <button
-          onClick={toggleTheme}
-          className="p-2 bg-gray-200 dark:bg-gray-800 rounded-lg shadow hover:bg-gray-300 dark:hover:bg-gray-700 transition"
-        >
-          {isDarkMode ? "☀️" : "🌓"}
-        </button>
+
+        {/* Container untuk Jam dan Tombol Dark Mode */}
+        <div className="flex items-center gap-4">
+          {/* Jam Digital */}
+          {isMounted && (
+            <div className="font-mono text-lg font-semibold tracking-wider bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              {time.toLocaleTimeString("en-GB")}
+            </div>
+          )}
+
+          <button
+            onClick={toggleTheme}
+            className="p-2 bg-gray-200 dark:bg-gray-800 rounded-lg shadow hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+          >
+            {isDarkMode ? "☀️" : "🌙"}
+          </button>
+        </div>
       </div>
 
       {/* App Cards */}
@@ -141,7 +163,7 @@ export default function Home() {
               <input
                 type="checkbox"
                 className="sr-only peer"
-                checked={statusAmira} // Gunakan checked, bukan defaultChecked
+                checked={statusAmira}
                 disabled={loadingApp === "Toko Roti Amira"}
                 onChange={(e) =>
                   handleToggleApp("Toko Roti Amira", statusAmira, e)
