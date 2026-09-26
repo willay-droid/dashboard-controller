@@ -1,69 +1,189 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
 
 export default function Home() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [loadingApp, setLoadingApp] = useState<string | null>(null);
+
+  // State untuk menyimpan status aktif aplikasi (true = online/nyala, false = offline)
+  const [statusAmira, setStatusAmira] = useState(true);
+  const [statusQr, setStatusQr] = useState(true);
+
+  // Ambil status dari Vercel Edge Config saat halaman dimuat
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        // Trik Cache-Buster
+        const res = await fetch("/api/status?t=" + Date.now(), {
+          cache: "no-store",
+        });
+        const data = await res.json();
+
+        // PERBAIKAN: Cari data di dalam Array berdasarkan 'key'-nya
+        const amiraItem = data.find(
+          (item: any) => item.key === "maintenance_amira",
+        );
+        const qrItem = data.find((item: any) => item.key === "maintenance_qr");
+
+        // Ambil property 'value' dari item yang ditemukan
+        const amiraMaintenance =
+          amiraItem?.value === true || amiraItem?.value === "true";
+        const qrMaintenance =
+          qrItem?.value === true || qrItem?.value === "true";
+
+        setStatusAmira(!amiraMaintenance);
+        setStatusQr(!qrMaintenance);
+      } catch (error) {
+        console.error("Gagal mengambil status awal:", error);
+      }
+    };
+    fetchStatus();
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+    document.documentElement.classList.toggle("dark");
+  };
+
+  const handleToggleApp = async (
+    appName: string,
+    currentActiveStatus: boolean,
+    event: any,
+  ) => {
+    // currentActiveStatus adalah status SEKARANG sebelum diklik.
+    // Jika true, artinya kita mau mematikan (maintenance = true).
+    const willBeMaintenance = currentActiveStatus;
+
+    if (currentActiveStatus) {
+      const confirmOff = window.confirm(
+        `Yakin ingin mematikan ${appName}? Pengunjung akan melihat halaman Maintenance.`,
+      );
+      if (!confirmOff) {
+        event.target.checked = true;
+        return;
+      }
+    }
+
+    setLoadingApp(appName);
+
+    try {
+      const res = await fetch("/api/toggle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appName, isMaintenance: willBeMaintenance }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Update state lokal supaya toggle bergeser
+        if (appName === "Toko Roti Amira") setStatusAmira(!willBeMaintenance);
+        if (appName === "QR Absensi") setStatusQr(!willBeMaintenance);
+
+        alert(
+          `Status ${appName} berhasil diubah menjadi: ${!willBeMaintenance ? "ONLINE" : "OFFLINE (Maintenance)"}`,
+        );
+      } else {
+        alert("Gagal update status.");
+        event.target.checked = currentActiveStatus;
+      }
+    } catch (error) {
+      alert("Terjadi kesalahan jaringan.");
+      event.target.checked = currentActiveStatus;
+    } finally {
+      setLoadingApp(null);
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen p-8 transition-colors duration-200 bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100">
+      {/* Header */}
+      <div className="max-w-4xl mx-auto flex justify-between items-center mb-10">
+        <div>
+          <h1 className="text-3xl font-bold">Central Command</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Dashboard Kontrol Aplikasi Terpusat
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <button
+          onClick={toggleTheme}
+          className="p-2 bg-gray-200 dark:bg-gray-800 rounded-lg shadow hover:bg-gray-300 dark:hover:bg-gray-700 transition"
+        >
+          {isDarkMode ? "☀️" : "🌓"}
+        </button>
+      </div>
+
+      {/* App Cards */}
+      <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Card 1: Amira Breadshop */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-xl font-semibold">🍞 Toko Roti Amira</h2>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${statusAmira ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"}`}
+              >
+                {statusAmira ? "ONLINE" : "OFFLINE"}
+              </span>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              Aplikasi e-commerce dan profil toko roti.
+            </p>
+          </div>
+          <div className="flex justify-between items-center border-t border-gray-100 dark:border-gray-700 pt-4">
+            <span className="text-sm font-medium">
+              {loadingApp === "Toko Roti Amira"
+                ? "Menyimpan..."
+                : "Status Aplikasi"}
+            </span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={statusAmira} // Gunakan checked, bukan defaultChecked
+                disabled={loadingApp === "Toko Roti Amira"}
+                onChange={(e) =>
+                  handleToggleApp("Toko Roti Amira", statusAmira, e)
+                }
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+            </label>
+          </div>
         </div>
-      </main>
+
+        {/* Card 2: QR Absensi */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-xl font-semibold">📷 QR Absensi</h2>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${statusQr ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"}`}
+              >
+                {statusQr ? "ONLINE" : "OFFLINE"}
+              </span>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              Sistem absensi pegawai menggunakan QR Code.
+            </p>
+          </div>
+          <div className="flex justify-between items-center border-t border-gray-100 dark:border-gray-700 pt-4">
+            <span className="text-sm font-medium">
+              {loadingApp === "QR Absensi" ? "Menyimpan..." : "Status Aplikasi"}
+            </span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={statusQr}
+                disabled={loadingApp === "QR Absensi"}
+                onChange={(e) => handleToggleApp("QR Absensi", statusQr, e)}
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
