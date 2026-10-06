@@ -132,7 +132,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Grid dirubah otomatis jadi 2 kolom, jadi 4 kotak akan pas */}
       <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card 1: Amira */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 flex flex-col justify-between">
@@ -145,9 +144,19 @@ export default function Home() {
                 {statusAmira ? "ONLINE" : "OFFLINE"}
               </span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
               Aplikasi e-commerce dan profil toko roti.
             </p>
+            <div className="mb-6">
+              <a
+                href="https://amira-breadshop.vercel.app/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-blue-500 dark:text-blue-400 hover:underline font-medium"
+              >
+                Buka Website &#8599;
+              </a>
+            </div>
           </div>
           <div className="flex justify-between items-center border-t border-gray-100 dark:border-gray-700 pt-4">
             <span className="text-sm font-medium">
@@ -181,9 +190,19 @@ export default function Home() {
                 {statusQr ? "ONLINE" : "OFFLINE"}
               </span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
               Sistem absensi pegawai menggunakan QR Code.
             </p>
+            <div className="mb-6">
+              <a
+                href="https://qr-absen-altop.vercel.app/admin-qr.html"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-blue-500 dark:text-blue-400 hover:underline font-medium"
+              >
+                Buka Panel Admin QR &#8599;
+              </a>
+            </div>
           </div>
           <div className="flex justify-between items-center border-t border-gray-100 dark:border-gray-700 pt-4">
             <span className="text-sm font-medium">
@@ -213,9 +232,27 @@ export default function Home() {
                 {statusAlker ? "ONLINE" : "OFFLINE"}
               </span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
               Sistem monitoring alat kerja.
             </p>
+            <div className="mb-6 flex flex-col gap-1.5">
+              <a
+                href="https://monitoring-alker.vercel.app/admin-login"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-blue-500 dark:text-blue-400 hover:underline font-medium"
+              >
+                Buka Login Admin &#8599;
+              </a>
+              <a
+                href="https://monitoring-alker.vercel.app/loker/loker-001"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-blue-500 dark:text-blue-400 hover:underline font-medium"
+              >
+                Buka Akses Teknisi &#8599;
+              </a>
+            </div>
           </div>
           <div className="flex justify-between items-center border-t border-gray-100 dark:border-gray-700 pt-4">
             <span className="text-sm font-medium">
@@ -249,9 +286,19 @@ export default function Home() {
                 {statusPortfolio ? "ONLINE" : "OFFLINE"}
               </span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
               Website portofolio personal.
             </p>
+            <div className="mb-6">
+              <a
+                href="https://willy-portfolio-three.vercel.app/"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-blue-500 dark:text-blue-400 hover:underline font-medium"
+              >
+                Buka Portfolio &#8599;
+              </a>
+            </div>
           </div>
           <div className="flex justify-between items-center border-t border-gray-100 dark:border-gray-700 pt-4">
             <span className="text-sm font-medium">
