@@ -89,8 +89,9 @@ export default function PublicMarketplace() {
     companyName: "",
     gmail: "",
     whatsapp: "",
-    budget: "",
     description: "",
+    budget: "",
+    paymentMethod: "BCA", // Tambahan default
   });
 
   // Sinkronisasi Tema
@@ -166,8 +167,8 @@ export default function PublicMarketplace() {
     const randomSuffix = Math.floor(1000 + Math.random() * 9000);
     const invoiceId = `INV-${dateStr}-${randomSuffix}`;
 
-    // Susun URL Invoice dengan semua data pesanan
-    const invUrl = `/invoice/${invoiceId}?client=${encodeURIComponent(formData.clientName)}&company=${encodeURIComponent(formData.companyName || "-")}&gmail=${encodeURIComponent(formData.gmail)}&wa=${encodeURIComponent(formData.whatsapp)}&service=${encodeURIComponent(categoryLabel)}&plan=${encodeURIComponent(planVal)}&price=${encodeURIComponent(priceVal)}&desc=${encodeURIComponent(formData.description || "-")}&action=new-order`;
+    // Susun URL Invoice dengan semua data pesanan + metode pembayaran
+    const invUrl = `/invoice/${invoiceId}?client=${encodeURIComponent(formData.clientName)}&company=${encodeURIComponent(formData.companyName || "-")}&gmail=${encodeURIComponent(formData.gmail)}&wa=${encodeURIComponent(formData.whatsapp)}&service=${encodeURIComponent(categoryLabel)}&plan=${encodeURIComponent(planVal)}&price=${encodeURIComponent(priceVal)}&desc=${encodeURIComponent(formData.description || "-")}&payment=${encodeURIComponent(formData.paymentMethod)}&action=new-order`;
 
     // Langsung pindah ke halaman invoice seketika
     router.push(invUrl);
@@ -566,6 +567,241 @@ export default function PublicMarketplace() {
                     }
                     className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   ></textarea>
+                </div>
+
+                {/* TAMBAHAN: Pilihan Metode Pembayaran & Pop-up QRIS */}
+                <div className="mt-3 space-y-3">
+                  <label className="block text-xs font-semibold text-gray-300 uppercase">
+                    Metode Pembayaran
+                  </label>
+
+                  {/* Kategori: Transfer Bank */}
+                  <div className="text-[10px] text-gray-400 font-semibold mb-1 uppercase">
+                    🏦 Transfer Bank
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+                    <label
+                      className={`cursor-pointer px-3 py-2.5 rounded-xl border text-[11px] font-semibold text-center transition-all ${formData.paymentMethod === "BCA" ? "border-blue-500 bg-blue-500/20 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.3)]" : "border-white/20 bg-white/10 text-gray-400 hover:bg-white/20"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="BCA"
+                        checked={formData.paymentMethod === "BCA"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                        className="hidden"
+                      />
+                      BCA
+                    </label>
+                    <label
+                      className={`cursor-pointer px-3 py-2.5 rounded-xl border text-[11px] font-semibold text-center transition-all ${formData.paymentMethod === "BNI" ? "border-orange-500 bg-orange-500/20 text-orange-300 shadow-[0_0_15px_rgba(249,115,22,0.3)]" : "border-white/20 bg-white/10 text-gray-400 hover:bg-white/20"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="BNI"
+                        checked={formData.paymentMethod === "BNI"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                        className="hidden"
+                      />
+                      BNI
+                    </label>
+                    <label
+                      className={`cursor-pointer px-3 py-2.5 rounded-xl border text-[11px] font-semibold text-center transition-all ${formData.paymentMethod === "Jago" ? "border-yellow-500 bg-yellow-500/20 text-yellow-300 shadow-[0_0_15px_rgba(234,179,8,0.3)]" : "border-white/20 bg-white/10 text-gray-400 hover:bg-white/20"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="Jago"
+                        checked={formData.paymentMethod === "Jago"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                        className="hidden"
+                      />
+                      Jago
+                    </label>
+                    <label
+                      className={`cursor-pointer px-3 py-2.5 rounded-xl border text-[11px] font-semibold text-center transition-all ${formData.paymentMethod === "Seabank" ? "border-orange-400 bg-orange-400/20 text-orange-200 shadow-[0_0_15px_rgba(251,146,60,0.3)]" : "border-white/20 bg-white/10 text-gray-400 hover:bg-white/20"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="Seabank"
+                        checked={formData.paymentMethod === "Seabank"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                        className="hidden"
+                      />
+                      Seabank
+                    </label>
+                  </div>
+
+                  {/* Kategori: E-Wallet */}
+                  <div className="text-[10px] text-gray-400 font-semibold mb-1 mt-3 uppercase">
+                    📱 E-Wallet
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-2">
+                    <label
+                      className={`cursor-pointer px-2 py-2.5 rounded-xl border text-[10px] font-semibold text-center transition-all ${formData.paymentMethod === "DANA" ? "border-blue-400 bg-blue-400/20 text-blue-200 shadow-[0_0_15px_rgba(96,165,250,0.3)]" : "border-white/20 bg-white/10 text-gray-400 hover:bg-white/20"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="DANA"
+                        checked={formData.paymentMethod === "DANA"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                        className="hidden"
+                      />
+                      DANA
+                    </label>
+                    <label
+                      className={`cursor-pointer px-2 py-2.5 rounded-xl border text-[10px] font-semibold text-center transition-all ${formData.paymentMethod === "ShopeePay" ? "border-orange-500 bg-orange-500/20 text-orange-300 shadow-[0_0_15px_rgba(249,115,22,0.3)]" : "border-white/20 bg-white/10 text-gray-400 hover:bg-white/20"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="ShopeePay"
+                        checked={formData.paymentMethod === "ShopeePay"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                        className="hidden"
+                      />
+                      ShopeePay
+                    </label>
+                    <label
+                      className={`cursor-pointer px-2 py-2.5 rounded-xl border text-[10px] font-semibold text-center transition-all ${formData.paymentMethod === "GoPay" ? "border-sky-500 bg-sky-500/20 text-sky-300 shadow-[0_0_15px_rgba(14,165,233,0.3)]" : "border-white/20 bg-white/10 text-gray-400 hover:bg-white/20"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="GoPay"
+                        checked={formData.paymentMethod === "GoPay"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                        className="hidden"
+                      />
+                      GoPay
+                    </label>
+                    <label
+                      className={`cursor-pointer px-2 py-2.5 rounded-xl border text-[10px] font-semibold text-center transition-all ${formData.paymentMethod === "OVO" ? "border-purple-500 bg-purple-500/20 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]" : "border-white/20 bg-white/10 text-gray-400 hover:bg-white/20"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="OVO"
+                        checked={formData.paymentMethod === "OVO"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                        className="hidden"
+                      />
+                      OVO
+                    </label>
+                    <label
+                      className={`cursor-pointer px-2 py-2.5 rounded-xl border text-[10px] font-semibold text-center transition-all ${formData.paymentMethod === "LinkAja" ? "border-red-500 bg-red-500/20 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.3)]" : "border-white/20 bg-white/10 text-gray-400 hover:bg-white/20"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="LinkAja"
+                        checked={formData.paymentMethod === "LinkAja"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                        className="hidden"
+                      />
+                      LinkAja
+                    </label>
+                  </div>
+
+                  {/* Kategori: QRIS */}
+                  <div className="text-[10px] text-gray-400 font-semibold mb-1 mt-3 uppercase">
+                    🟢 Praktis
+                  </div>
+                  <div className="grid grid-cols-1 mb-4">
+                    <label
+                      className={`cursor-pointer px-4 py-3 rounded-xl border text-sm font-bold text-center transition-all ${formData.paymentMethod === "QRIS" ? "border-emerald-500 bg-emerald-500/20 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.5)]" : "border-white/20 bg-white/10 text-gray-400 hover:bg-white/20"}`}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="QRIS"
+                        checked={formData.paymentMethod === "QRIS"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                        className="hidden"
+                      />
+                      Scan QRIS (Semua Bank/E-Wallet)
+                    </label>
+                  </div>
+
+                  {/* POP-UP / COLLAPSE QRIS (HANYA MUNCUL JIKA QRIS DIPILIH) */}
+                  {formData.paymentMethod === "QRIS" && (
+                    <div className="mt-2 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex flex-col sm:flex-row items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="flex-1 text-center sm:text-left">
+                        <p className="text-xs font-bold text-emerald-300 mb-1">
+                          🟢 Pembayaran QRIS
+                        </p>
+                        <p className="text-[10px] text-gray-300 mt-1">
+                          Scan barcode di samping menggunakan aplikasi M-Banking
+                          atau E-Wallet apa saja.
+                        </p>
+                        <p className="text-[10px] font-semibold text-emerald-400 mt-3 hidden sm:block">
+                          Atas Nama: Anysale - Art
+                        </p>
+                      </div>
+
+                      {/* Kotak Gambar QRIS */}
+                      <div className="w-32 h-32 relative rounded-lg overflow-hidden border-2 border-white/20 bg-white flex-shrink-0 p-1">
+                        <img
+                          src="/qris-image.jpg"
+                          alt="QRIS Pembayaran"
+                          className="object-contain w-full h-full"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Tombol Kirim Form */}

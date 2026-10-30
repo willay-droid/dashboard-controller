@@ -14,34 +14,44 @@ export async function POST(req: Request) {
       description,
       price,
       planType,
+      paymentMethod,
     } = body;
 
-    // 1. Simpan Data Klien ke Vercel KV
+    // 1. Ambil data klien yang sudah ada (untuk mengecek duplikasi)
+    const existingClients: any[] = (await kv.get("clients_list")) || [];
+
+    // SATPAM ANTI-DOBEL: Cek apakah invoiceId ini sudah pernah masuk sebelumnya
+    const isDuplicate = existingClients.some((c) => c.id === invoiceId);
+
+    // JIKA INVOICE SUDAH ADA, LANGSUNG HENTIKAN PROSES DI SINI (Jangan kirim Telegram lagi)
+    if (isDuplicate) {
+      return NextResponse.json({
+        success: true,
+        message: "Pesanan sudah tercatat sebelumnya.",
+        invoiceId,
+      });
+    }
+
+    // 2. Jika aman (belum ada), Simpan Data Klien Baru ke Vercel KV
     const newClientData = {
-      id: invoiceId, // Pakai No. Invoice dari URL sebagai ID Klien
+      id: invoiceId,
       companyName: companyName !== "-" ? companyName : clientName,
       picName: clientName,
       whatsapp: whatsapp,
       planType: planType,
       dueDate: planType === "Permanen" ? "Lifetime" : "Menunggu Pembayaran",
-      isActive: false, // Ditangguhkan sampai Admin klik ON setelah dibayar
+      isActive: false,
       createdAt: new Date().toISOString(),
     };
 
-    // Ambil data array klien lama, tambahkan yang baru, lalu simpan kembali
-    const existingClients: any[] = (await kv.get("clients_list")) || [];
+    // Masukkan data baru ke urutan paling atas
+    await kv.set("clients_list", [newClientData, ...existingClients]);
 
-    // Cek agar tidak duplikat (kalau user refresh cepat)
-    const isDuplicate = existingClients.some((c) => c.id === invoiceId);
-    if (!isDuplicate) {
-      await kv.set("clients_list", [newClientData, ...existingClients]);
-    }
-
-    // 2. Notifikasi ke Telegram
+    // 3. Notifikasi ke Telegram
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
 
-    if (botToken && chatId && !isDuplicate) {
+    if (botToken && chatId) {
       const message = `🧾 *PESANAN BARU + INVOICE DIBUKA!* 🧾
 ━━━━━━━━━━━━━━━━━━
 📄 *No. Invoice:* \`${invoiceId}\`
@@ -51,6 +61,7 @@ export async function POST(req: Request) {
 📱 *WhatsApp:* https://wa.me/${whatsapp.replace(/^0/, "62")} (${whatsapp})
 📦 *Layanan:* ${category}
 💰 *Total Tagihan:* ${price}
+💳 *Metode Pembayaran:* ${paymentMethod || "Tidak Dipilih"}
 📝 *Catatan:* ${description}
 ━━━━━━━━━━━━━━━━━━
 ⏰ *Waktu:* ${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })} WIB`;
