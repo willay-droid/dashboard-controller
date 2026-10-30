@@ -39,6 +39,7 @@ export async function POST(req: Request) {
       picName: clientName,
       whatsapp: whatsapp,
       planType: planType,
+      category: category, // <-- TAMBAHAN: Menyimpan nama layanan/aplikasi yang diorder
       dueDate: planType === "Permanen" ? "Lifetime" : "Menunggu Pembayaran",
       isActive: false,
       createdAt: new Date().toISOString(),
@@ -86,3 +87,16 @@ export async function POST(req: Request) {
     );
   }
 }
+
+// Cari bagian penyusunan data klien untuk Vercel KV di app/api/order/route.ts
+const newClientEntry = {
+  id: invoiceId,
+  companyName: companyName && companyName !== "-" ? companyName : clientName,
+  picName: clientName,
+  whatsapp: whatsapp,
+  planType: planType || "Bulanan",
+  category: category || service || "QR Absensi", // <-- WAJIB TAMBAHKAN BARIS INI
+  dueDate: "Menunggu Pembayaran",
+  isActive: false,
+  createdAt: new Date().toISOString(),
+};
