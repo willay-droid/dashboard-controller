@@ -11,35 +11,50 @@ export async function POST(req: Request) {
       gmail,
       whatsapp,
       category,
+      service,
+      appName,
       description,
       price,
       planType,
       paymentMethod,
     } = body;
 
-    // 1. Ambil data klien yang sudah ada (untuk mengecek duplikasi)
+    // 1. Selaraskan nama produk/aplikasi dari parameter mana pun yang dikirim form/URL
+    const productCategory = category || service || appName || "QR Absensi";
+
+    // 2. Ambil data klien yang sudah ada di Vercel KV
     const existingClients: any[] = (await kv.get("clients_list")) || [];
 
-    // SATPAM ANTI-DOBEL: Cek apakah invoiceId ini sudah pernah masuk sebelumnya
-    const isDuplicate = existingClients.some((c) => c.id === invoiceId);
+    // 3. Cek apakah invoiceId ini sudah pernah masuk sebelumnya
+    const existingIndex = existingClients.findIndex((c) => c.id === invoiceId);
 
-    // JIKA INVOICE SUDAH ADA, LANGSUNG HENTIKAN PROSES DI SINI (Jangan kirim Telegram lagi)
-    if (isDuplicate) {
+    if (existingIndex !== -1) {
+      // Jika sudah ada tapi nama produknya masih kosong atau masih default "QR Absensi",
+      // perbarui nama produknya sesuai yang diorder tanpa mengirim ulang notif Telegram
+      if (
+        productCategory &&
+        existingClients[existingIndex].category !== productCategory
+      ) {
+        existingClients[existingIndex].category = productCategory;
+        await kv.set("clients_list", existingClients);
+      }
+
       return NextResponse.json({
         success: true,
-        message: "Pesanan sudah tercatat sebelumnya.",
+        message: "Pesanan sudah tercatat dan diselaraskan.",
         invoiceId,
       });
     }
 
-    // 2. Jika aman (belum ada), Simpan Data Klien Baru ke Vercel KV
+    // 4. Jika belum ada, simpan data klien baru lengkap dengan nama produknya
     const newClientData = {
       id: invoiceId,
-      companyName: companyName !== "-" ? companyName : clientName,
+      companyName:
+        companyName && companyName !== "-" ? companyName : clientName,
       picName: clientName,
       whatsapp: whatsapp,
-      planType: planType,
-      category: category, // <-- TAMBAHAN: Menyimpan nama layanan/aplikasi yang diorder
+      planType: planType || "Bulanan",
+      category: productCategory, // <-- Menyimpan "E-Commerce & Smart POS Kasir" dll.
       dueDate: planType === "Permanen" ? "Lifetime" : "Menunggu Pembayaran",
       isActive: false,
       createdAt: new Date().toISOString(),
@@ -48,7 +63,7 @@ export async function POST(req: Request) {
     // Masukkan data baru ke urutan paling atas
     await kv.set("clients_list", [newClientData, ...existingClients]);
 
-    // 3. Notifikasi ke Telegram
+    // 5. Notifikasi ke Telegram
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
 
@@ -60,7 +75,7 @@ export async function POST(req: Request) {
 🏢 *Perusahaan:* ${companyName}
 📧 *Gmail:* \`${gmail}\`
 📱 *WhatsApp:* https://wa.me/${whatsapp.replace(/^0/, "62")} (${whatsapp})
-📦 *Layanan:* ${category}
+📦 *Layanan:* ${productCategory}
 💰 *Total Tagihan:* ${price}
 💳 *Metode Pembayaran:* ${paymentMethod || "Tidak Dipilih"}
 📝 *Catatan:* ${description}
@@ -87,16 +102,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-// Cari bagian penyusunan data klien untuk Vercel KV di app/api/order/route.ts
-const newClientEntry = {
-  id: invoiceId,
-  companyName: companyName && companyName !== "-" ? companyName : clientName,
-  picName: clientName,
-  whatsapp: whatsapp,
-  planType: planType || "Bulanan",
-  category: category || service || "QR Absensi", // <-- WAJIB TAMBAHKAN BARIS INI
-  dueDate: "Menunggu Pembayaran",
-  isActive: false,
-  createdAt: new Date().toISOString(),
-};
