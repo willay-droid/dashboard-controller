@@ -47,7 +47,7 @@ export default function AdminController() {
   );
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [itemsPerPage, setItemsPerPage] = useState(4); // Sudah 4 sesuai request
+  const [itemsPerPage, setItemsPerPage] = useState(1); // Sudah 4 sesuai request
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -653,8 +653,8 @@ export default function AdminController() {
                       onChange={(e) => setItemsPerPage(Number(e.target.value))}
                       className="bg-transparent border-none text-emerald-400 focus:outline-none cursor-pointer font-bold"
                     >
-                      <option value={2} className="bg-gray-800">
-                        2
+                      <option value={1} className="bg-gray-800">
+                        1
                       </option>
                       <option value={4} className="bg-gray-800">
                         4
