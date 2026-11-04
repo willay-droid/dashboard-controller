@@ -349,6 +349,30 @@ export default function AdminController() {
     startIndex + itemsPerPage,
   );
 
+  // Fungsi untuk menentukan URL Web Langganan berdasarkan Aplikasi yang diorder klien
+  const getClientAppUrl = (client: ClientLicense) => {
+    const appCategory = (client.category || "").toLowerCase();
+
+    if (
+      appCategory.includes("pos") ||
+      appCategory.includes("roti") ||
+      appCategory.includes("commerce") ||
+      appCategory.includes("amira")
+    ) {
+      return `https://amira-breadshop.vercel.app/?id=${client.id}`;
+    }
+    if (
+      appCategory.includes("alker") ||
+      appCategory.includes("aset") ||
+      appCategory.includes("iot") ||
+      appCategory.includes("loker")
+    ) {
+      return `https://monitoring-alker.vercel.app/admin-login?id=${client.id}`;
+    }
+    // Default ke QR Absensi
+    return `https://qr-absen-altop.vercel.app/admin-qr.html?id=${client.id}`;
+  };
+
   return (
     <div className="relative min-h-screen p-4 sm:p-8 bg-[url('/vibrant_neon_interpretation_of_venus.jpg')] bg-cover bg-center bg-fixed bg-no-repeat bg-black/50 bg-blend-overlay text-gray-100 overflow-hidden font-sans">
       <div className="relative z-10 max-w-5xl mx-auto flex flex-col h-[calc(100vh-2rem)] sm:h-auto">
@@ -742,15 +766,50 @@ export default function AdminController() {
                               {client.whatsapp}
                             </td>
                             <td className="px-6 py-4">
-                              <span
-                                className={`px-2.5 py-1 text-[10px] font-bold rounded-md border whitespace-nowrap ${client.planType === "Permanen" ? "bg-purple-500/10 text-purple-400 border-purple-500/20" : client.planType === "Custom" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"}`}
-                              >
-                                {client.planType}{" "}
-                                <span className="mx-1 text-gray-500">|</span>{" "}
-                                <span className="text-gray-300">
-                                  {client.category || "QR Absensi"}
+                              <div className="flex flex-col items-start gap-1.5">
+                                <span
+                                  className={`px-2.5 py-1 text-[10px] font-bold rounded-md border whitespace-nowrap ${
+                                    client.planType === "Permanen"
+                                      ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                                      : client.planType === "Custom"
+                                        ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                                        : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
+                                  }`}
+                                >
+                                  {client.planType}{" "}
+                                  <span className="mx-1 text-gray-500">|</span>{" "}
+                                  <span className="text-gray-300">
+                                    {client.category || "QR Absensi"}
+                                  </span>
                                 </span>
-                              </span>
+
+                                {/* Pintasan Link Server Khusus Perusahaan Ini */}
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <a
+                                    href={getClientAppUrl(client)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-1"
+                                  >
+                                    🔗 Buka Web Klien &#8599;
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(
+                                        getClientAppUrl(client),
+                                      );
+                                      alert(
+                                        `Link akses untuk ${client.companyName} berhasil disalin!`,
+                                      );
+                                    }}
+                                    className="text-[10px] text-gray-400 hover:text-white bg-white/5 px-1.5 py-0.5 rounded border border-white/10"
+                                    title="Salin Link Klien"
+                                  >
+                                    Copy
+                                  </button>
+                                </div>
+                              </div>
                             </td>
                             <td
                               className={`px-6 py-4 text-xs font-semibold ${client.dueDate === "Menunggu Pembayaran" ? "text-amber-400" : "text-gray-400"}`}
