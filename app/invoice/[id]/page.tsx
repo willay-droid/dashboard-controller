@@ -16,10 +16,17 @@ function InvoiceContent() {
   const whatsapp = searchParams.get("wa") || "08xxxxxxxxx";
   const service = searchParams.get("service") || "Sistem QR Absensi Perusahaan";
   const plan = searchParams.get("plan") || "Bulanan";
-  const price = searchParams.get("price") || "Menyesuaikan";
+  const rawPrice = searchParams.get("price") || "Menyesuaikan";
   const desc = searchParams.get("desc") || "-";
   const paymentMethod = searchParams.get("payment") || "BCA";
   const isNewOrder = searchParams.get("action") === "new-order";
+
+  // Cek apakah pesanan ini berhak mendapat Promo Pelanggan Baru 25% (Khusus QR Absensi + Bulanan)
+  const isQrMonthlyPromo =
+    service.toLowerCase().includes("qr absensi") && plan === "Bulanan";
+
+  // Pastikan harga akhir menggunakan Rp 56.625 jika memenuhi syarat promo
+  const price = isQrMonthlyPromo ? "Rp 56.625" : rawPrice;
 
   const [status, setStatus] = useState("MENUNGGU PEMBAYARAN");
   const [date, setDate] = useState("");
@@ -78,7 +85,10 @@ function InvoiceContent() {
 
   // URL WhatsApp untuk konfirmasi otomatis
   const waAdmin = "082218937297"; // Nomor WA Admin Lu
-  const waMessage = `Halo Admin, saya ingin mengonfirmasi pembayaran untuk:\n\n📄 *No. Invoice:* ${invoiceId}\n🏢 *Atas Nama:* ${clientName} (${companyName})\n📦 *Layanan:* ${service}\n💳 *Paket:* ${plan}\n🏦 *Via:* ${paymentMethod}\n💰 *Total:* ${price}\n\nBerikut saya lampirkan bukti transfernya. Terima kasih.`;
+  const promoTextWa = isQrMonthlyPromo
+    ? " (Promo Pelanggan Baru Diskon 25% dari Rp 75.500)"
+    : "";
+  const waMessage = `Halo Admin, saya ingin mengonfirmasi pembayaran untuk:\n\n📄 *No. Invoice:* ${invoiceId}\n🏢 *Atas Nama:* ${clientName} (${companyName})\n📦 *Layanan:* ${service}\n💳 *Paket:* ${plan}\n🏦 *Via:* ${paymentMethod}\n💰 *Total:* ${price}${promoTextWa}\n\nBerikut saya lampirkan bukti transfernya. Terima kasih.`;
   const waLink = `https://wa.me/${waAdmin.replace(/^0/, "62")}?text=${encodeURIComponent(waMessage)}`;
 
   return (
@@ -188,6 +198,11 @@ function InvoiceContent() {
             <span className="text-xs text-gray-500 font-medium block">
               Total Dibayar:
             </span>
+            {isQrMonthlyPromo && (
+              <span className="text-xs line-through text-red-400 font-bold mr-2">
+                Rp 75.500
+              </span>
+            )}
             <span className="text-2xl font-black text-gray-900">{price}</span>
           </div>
         </div>
@@ -361,6 +376,12 @@ function InvoiceContent() {
                     Setup server, aktivasi sistem, dan layanan cloud sesuai
                     paket berlangganan.
                   </div>
+                  {isQrMonthlyPromo && (
+                    <div className="mt-2 inline-block px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-[10px] font-bold text-emerald-700">
+                      🎁 Promo Pelanggan Baru: Diskon 25% Pembayaran Pertama
+                      (Hemat Rp 18.875)
+                    </div>
+                  )}
                 </td>
                 <td className="py-4 px-3">
                   <span className="bg-gray-100 px-2.5 py-1.5 rounded-lg border border-gray-200 text-[10px] font-bold text-gray-700 block text-center shadow-sm">
@@ -368,8 +389,15 @@ function InvoiceContent() {
                     <span className="text-emerald-600">{service}</span>
                   </span>
                 </td>
-                <td className="py-4 px-3 text-right font-black text-gray-900 text-sm">
-                  {price}
+                <td className="py-4 px-3 text-right">
+                  {isQrMonthlyPromo && (
+                    <div className="text-[11px] line-through text-gray-400 font-semibold">
+                      Rp 75.500
+                    </div>
+                  )}
+                  <div className="font-black text-gray-900 text-sm">
+                    {price}
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -377,11 +405,17 @@ function InvoiceContent() {
         </div>
 
         {/* TOTAL PERHITUNGAN */}
-        <div className="border-t-2 border-gray-200 pt-5 flex justify-between items-center text-sm">
-          <div className="text-[11px] text-gray-500 font-medium">
-            *Harap simpan invoice ini sebagai bukti pemesanan yang sah.
+        <div className="border-t-2 border-gray-200 pt-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-sm">
+          <div className="text-[11px] text-gray-500 font-medium space-y-1">
+            <p>*Harap simpan invoice ini sebagai bukti pemesanan yang sah.</p>
+            {isQrMonthlyPromo && (
+              <p className="text-emerald-700 font-semibold">
+                *Tarif promo Rp 56.625 berlaku di bulan pertama. Bulan
+                berikutnya berlaku tarif normal Rp 75.500/bulan.
+              </p>
+            )}
           </div>
-          <div className="text-right bg-gray-50 p-3 rounded-xl border border-gray-100">
+          <div className="text-right bg-gray-50 p-3 rounded-xl border border-gray-100 w-full sm:w-auto">
             <span className="text-xs text-gray-500 font-bold uppercase tracking-wider block mb-1">
               Total Akhir:
             </span>
@@ -408,7 +442,6 @@ function InvoiceContent() {
               🖨️ Cetak / Simpan PDF
             </button>
 
-            {/* DIKEMBALIKAN KE TOMBOL KONFIRMASI WA */}
             <a
               href={waLink}
               target="_blank"

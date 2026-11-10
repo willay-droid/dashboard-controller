@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+
 // Tipe Data untuk Katalog Produk
 interface SaaSProduct {
   id: string;
@@ -9,12 +10,14 @@ interface SaaSProduct {
   category: string;
   description: string;
   monthlyPrice: string;
+  promoMonthlyPrice?: string; // Harga setelah diskon 25% bulan pertama
+  promoBadge?: string; // Keterangan promo
   permanentPrice: string;
   badge: string;
   features: string[];
 }
 
-// Mock Data Katalog Aplikasi Siap Pakai (Bisa lu tambah lagi sewaktu-waktu)
+// Data Katalog Aplikasi Siap Pakai
 const SAAS_PRODUCTS: SaaSProduct[] = [
   {
     id: "qr-absensi",
@@ -22,7 +25,9 @@ const SAAS_PRODUCTS: SaaSProduct[] = [
     category: "Absensi & SDM",
     description:
       "Solusi absensi digital anti-titip absen dengan live QR kamera scanner dan sinkronisasi real-time ke Google Spreadsheet.",
-    monthlyPrice: "Rp 99.000",
+    monthlyPrice: "Rp 75.500",
+    promoMonthlyPrice: "Rp 56.625", // Potongan 25% (1/4) dari Rp 75.500
+    promoBadge: "🎁 Diskon 25% Bulan Pertama",
     permanentPrice: "Rp 1.499.000",
     badge: "Most Popular",
     features: [
@@ -91,7 +96,7 @@ export default function PublicMarketplace() {
     whatsapp: "",
     description: "",
     budget: "",
-    paymentMethod: "BCA", // Tambahan default
+    paymentMethod: "BCA",
   });
 
   // Sinkronisasi Tema
@@ -145,18 +150,18 @@ export default function PublicMarketplace() {
     setIsSuccess(false);
   };
 
-  // 5. Submit Order ke API Telegram
+  // 5. Submit Order ke Halaman Invoice & API Telegram
   const router = useRouter();
 
   const handleSubmitOrder = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Ambil detail harga dan kategori
+    // Ambil detail harga dan kategori (Otomatis potong 25% jika QR Absensi + Bulanan)
     const categoryLabel = selectedProduct ? selectedProduct.name : "Custom App";
     const priceVal = selectedProduct
       ? selectedPlanType === "monthly"
-        ? selectedProduct.monthlyPrice
+        ? selectedProduct.promoMonthlyPrice || selectedProduct.monthlyPrice
         : selectedProduct.permanentPrice
       : formData.budget || "Custom";
     const planVal = selectedPlanType === "monthly" ? "Bulanan" : "Permanen";
@@ -263,22 +268,46 @@ export default function PublicMarketplace() {
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
+                <div className="mt-6 pt-4 border-t border-white/10 flex items-end justify-between gap-2">
                   <div>
-                    <span className="text-[10px] text-gray-300 block">
-                      Mulai dari
-                    </span>
-                    <span className="text-base font-extrabold text-white">
-                      {product.monthlyPrice}
-                      <span className="text-[10px] font-normal text-gray-300">
-                        /bln
-                      </span>
-                    </span>
+                    {product.promoMonthlyPrice ? (
+                      <>
+                        <span className="inline-block mb-1 px-2 py-0.5 text-[9px] font-bold rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          {product.promoBadge}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-gray-300">
+                            Normal
+                          </span>
+                          <span className="text-xs line-through text-red-400 font-semibold">
+                            {product.monthlyPrice}/bln
+                          </span>
+                        </div>
+                        <span className="text-lg font-extrabold text-emerald-300">
+                          {product.promoMonthlyPrice}
+                          <span className="text-[10px] font-normal text-gray-300">
+                            /bln pertama
+                          </span>
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-[10px] text-gray-300 block">
+                          Mulai dari
+                        </span>
+                        <span className="text-base font-extrabold text-white">
+                          {product.monthlyPrice}
+                          <span className="text-[10px] font-normal text-gray-300">
+                            /bln
+                          </span>
+                        </span>
+                      </>
+                    )}
                   </div>
 
                   <button
                     onClick={() => handleSelectProduct(product)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/25 transition-all"
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/25 transition-all shrink-0"
                   >
                     Pilih & Order 👉
                   </button>
@@ -340,15 +369,44 @@ export default function PublicMarketplace() {
                 className="cursor-pointer p-5 rounded-2xl border border-white/20 bg-white/5 hover:border-emerald-400 hover:bg-emerald-950/20 transition-all flex flex-col justify-between group"
               >
                 <div>
-                  <span className="text-[10px] font-bold text-emerald-300 px-2 py-0.5 bg-emerald-500/20 rounded">
-                    SaaS Bulanan
-                  </span>
-                  <div className="mt-3 flex items-baseline gap-1">
-                    <span className="text-2xl font-extrabold text-white">
-                      {selectedProduct.monthlyPrice}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold text-emerald-300 px-2 py-0.5 bg-emerald-500/20 rounded">
+                      SaaS Bulanan
                     </span>
-                    <span className="text-xs text-gray-400">/ bulan</span>
+                    {selectedProduct.promoMonthlyPrice && (
+                      <span className="text-[10px] font-bold text-amber-300 px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded">
+                        Diskon 25% Bln Pertama
+                      </span>
+                    )}
                   </div>
+
+                  {selectedProduct.promoMonthlyPrice ? (
+                    <div className="mt-3">
+                      <span className="text-xs line-through text-red-400 block">
+                        Normal {selectedProduct.monthlyPrice} / bulan
+                      </span>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <span className="text-2xl font-extrabold text-emerald-400">
+                          {selectedProduct.promoMonthlyPrice}
+                        </span>
+                        <span className="text-xs text-gray-300">
+                          / bulan pertama
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-amber-300/90 mt-1">
+                        *Hemat 25% di pembayaran awal. Bulan ke-2 dst kembali
+                        normal {selectedProduct.monthlyPrice}/bln.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-3 flex items-baseline gap-1">
+                      <span className="text-2xl font-extrabold text-white">
+                        {selectedProduct.monthlyPrice}
+                      </span>
+                      <span className="text-xs text-gray-400">/ bulan</span>
+                    </div>
+                  )}
+
                   <p className="text-xs text-gray-300 mt-2">
                     Cocok untuk uji coba operasional awal dengan cashflow
                     terjangkau dan full maintenance cloud.
@@ -417,7 +475,9 @@ export default function PublicMarketplace() {
                     Paket:{" "}
                     <span className="font-semibold text-emerald-300">
                       {selectedPlanType === "monthly"
-                        ? `Bulanan (${selectedProduct?.monthlyPrice}/bln)`
+                        ? selectedProduct?.promoMonthlyPrice
+                          ? `Bulanan — Promo Bulan Pertama ${selectedProduct.promoMonthlyPrice} (Normal ${selectedProduct.monthlyPrice}/bln)`
+                          : `Bulanan (${selectedProduct?.monthlyPrice}/bln)`
                         : `Permanen (${selectedProduct?.permanentPrice})`}
                     </span>
                   </p>
@@ -569,7 +629,7 @@ export default function PublicMarketplace() {
                   ></textarea>
                 </div>
 
-                {/* TAMBAHAN: Pilihan Metode Pembayaran & Pop-up QRIS */}
+                {/* Pilihan Metode Pembayaran & Pop-up QRIS */}
                 <div className="mt-3 space-y-3">
                   <label className="block text-xs font-semibold text-gray-300 uppercase">
                     Metode Pembayaran
