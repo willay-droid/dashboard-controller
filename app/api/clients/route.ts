@@ -39,15 +39,23 @@ export async function POST(req: Request) {
   }
 }
 
-// 3. PATCH: Saklar Akses On/Off per pelanggan (Ini yang bikin error tadi kalau hilang)
+// 3. PATCH: Saklar Akses On/Off per pelanggan + Otomatis ubah Lunas / Menunggu Pembayaran
 export async function PATCH(req: Request) {
   try {
     const { id, isActive } = await req.json();
     const existingClients: any[] = (await kv.get("clients_list")) || [];
 
-    const updatedClients = existingClients.map((client) =>
-      client.id === id ? { ...client, isActive } : client,
-    );
+    const updatedClients = existingClients.map((client) => {
+      if (client.id === id) {
+        return {
+          ...client,
+          isActive,
+          // Jika saklar ON -> "Lunas", jika saklar OFF -> "Menunggu Pembayaran"
+          dueDate: isActive ? "Lunas" : "Menunggu Pembayaran",
+        };
+      }
+      return client;
+    });
 
     await kv.set("clients_list", updatedClients);
     return NextResponse.json({ success: true });

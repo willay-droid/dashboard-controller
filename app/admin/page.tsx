@@ -11,7 +11,7 @@ interface ClientLicense {
   dueDate: string;
   isActive: boolean;
   category?: string;
-  createdAt?: string; // TAMBAHKAN INI
+  createdAt?: string;
 }
 
 export default function AdminController() {
@@ -38,7 +38,7 @@ export default function AdminController() {
     whatsapp: "",
     planType: "Bulanan",
     dueDate: "",
-    category: "", // PERBAIKAN 1: Tambahkan state category
+    category: "",
   });
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -47,7 +47,7 @@ export default function AdminController() {
   );
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [itemsPerPage, setItemsPerPage] = useState(1); // Sudah 4 sesuai request
+  const [itemsPerPage, setItemsPerPage] = useState(4);
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -106,6 +106,8 @@ export default function AdminController() {
       }
     };
     fetchClients();
+
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -188,16 +190,19 @@ export default function AdminController() {
   };
 
   const toggleClientStatus = async (id: string, currentStatus: boolean) => {
-    const actionText = currentStatus ? "MENANGGUHKAN" : "MENGAKTIFKAN";
-    const confirmAction = window.confirm(
-      `Apakah Anda yakin ingin ${actionText} akses untuk klien ini?`,
-    );
-    if (!confirmAction) return;
-
     const previousClients = [...clients];
-    setClients((prevClients) =>
-      prevClients.map((client) =>
-        client.id === id ? { ...client, isActive: !currentStatus } : client,
+    const nextStatus = !currentStatus;
+
+    // Update tampilan secara instan (Optimistic UI): ON -> Lunas, OFF -> Menunggu Pembayaran
+    setClients(
+      clients.map((client) =>
+        client.id === id
+          ? {
+              ...client,
+              isActive: nextStatus,
+              dueDate: nextStatus ? "Lunas" : "Menunggu Pembayaran",
+            }
+          : client,
       ),
     );
 
@@ -205,16 +210,16 @@ export default function AdminController() {
       const res = await fetch("/api/clients", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, isActive: !currentStatus }),
+        body: JSON.stringify({ id, isActive: nextStatus }),
       });
       const data = await res.json();
+
       if (!data.success) {
         alert("Gagal mengubah status klien di server.");
         setClients(previousClients);
       }
     } catch (error) {
-      console.error("Gagal toggle status:", error);
-      alert("Terjadi kesalahan jaringan. Status gagal diubah.");
+      alert("Terjadi kesalahan koneksi.");
       setClients(previousClients);
     }
   };
@@ -231,7 +236,9 @@ export default function AdminController() {
       planType: newClient.planType,
       category: newClient.category || "Aplikasi Sistem",
       dueDate:
-        newClient.planType === "Permanen" ? "Lifetime" : newClient.dueDate,
+        newClient.planType === "Permanen"
+          ? "Lifetime"
+          : newClient.dueDate || "Lunas",
       isActive: true,
     };
 
@@ -295,15 +302,12 @@ export default function AdminController() {
 
   const handleDeleteClient = async (id: string, picName: string) => {
     const confirmDelete = window.confirm(
-      `⚠️ PERINGATAN BROS!\nApakah lu yakin mau menghapus klien "${picName}" (Invoice: ${id}) secara permanen dari database?`,
+      `⚠️ PERINGATAN BRO!\nApakah lu yakin mau menghapus klien "${picName}" (Invoice: ${id}) secara permanen dari database?`,
     );
 
     if (!confirmDelete) return;
 
-    // Simpan state lama untuk backup
     const previousClients = [...clients];
-
-    // Optimistic UI: Hapus langsung dari tampilan biar kelihatan instan
     setClients(clients.filter((client) => client.id !== id));
 
     try {
@@ -317,12 +321,12 @@ export default function AdminController() {
 
       if (!data.success) {
         alert("Gagal menghapus data dari Vercel server.");
-        setClients(previousClients); // Rollback jika error
+        setClients(previousClients);
       }
     } catch (error) {
       console.error("Gagal hapus klien:", error);
       alert("Terjadi kesalahan jaringan.");
-      setClients(previousClients); // Rollback
+      setClients(previousClients);
     }
   };
 
@@ -335,6 +339,7 @@ export default function AdminController() {
       client.companyName?.toLowerCase().includes(searchLower) ||
       client.planType?.toLowerCase().includes(searchLower) ||
       client.category?.toLowerCase().includes(searchLower) ||
+      client.dueDate?.toLowerCase().includes(searchLower) ||
       (client.isActive ? "aktif" : "ditangguhkan").includes(searchLower)
     );
   });
@@ -369,47 +374,55 @@ export default function AdminController() {
     ) {
       return `https://monitoring-alker.vercel.app/admin-login?id=${client.id}`;
     }
-    // Default ke QR Absensi
     return `https://qr-absen-altop.vercel.app/admin-qr.html?id=${client.id}`;
   };
 
   return (
-    <div className="relative min-h-screen p-4 sm:p-8 bg-[url('/vibrant_neon_interpretation_of_venus.jpg')] bg-cover bg-center bg-fixed bg-no-repeat bg-black/50 bg-blend-overlay text-gray-100 overflow-hidden font-sans">
+    <div className="relative min-h-screen p-4 sm:p-8 bg-[url('/vibrant_neon_interpretation_of_venus.jpg')] bg-cover bg-center bg-fixed bg-no-repeat bg-white/35 dark:bg-black/65 bg-blend-overlay text-gray-900 dark:text-gray-100 transition-colors duration-300 font-sans">
       <div className="relative z-10 max-w-5xl mx-auto flex flex-col h-[calc(100vh-2rem)] sm:h-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5 sm:gap-0 mb-8 flex-shrink-0">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-200 to-gray-400 dark:from-white dark:to-gray-400 drop-shadow-sm flex items-center gap-3">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-400 drop-shadow-sm flex items-center gap-3">
               ⚡ Central Command
             </h1>
-            <p className="text-xs sm:text-sm font-medium text-gray-300 dark:text-gray-400 mt-1 sm:mt-2 tracking-wide">
+            <p className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-400 mt-1 sm:mt-2 tracking-wide">
               Panel Manajemen Lisensi Klien (Tersinkron Vercel KV)
             </p>
           </div>
 
           <div className="flex items-center justify-between w-full sm:w-auto sm:justify-end gap-3 sm:gap-4">
-            <div className="flex bg-white/10 dark:bg-gray-800/40 p-1 rounded-xl border border-white/20 backdrop-blur-sm">
+            <div className="flex bg-white/60 dark:bg-gray-800/50 p-1 rounded-xl border border-white/80 dark:border-white/20 backdrop-blur-md shadow-sm">
               <button
                 onClick={() => setCurrentSlide(0)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${currentSlide === 0 ? "bg-indigo-500 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
+                  currentSlide === 0
+                    ? "bg-indigo-600 text-white shadow-lg"
+                    : "text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                }`}
               >
                 🎮 Controller
               </button>
               <button
                 onClick={() => setCurrentSlide(1)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${currentSlide === 1 ? "bg-emerald-500 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                  currentSlide === 1
+                    ? "bg-emerald-500 text-white shadow-lg"
+                    : "text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                }`}
               >
                 👥 Klien & Lisensi ({clients.length})
               </button>
             </div>
             {isMounted && (
-              <div className="font-mono text-base font-semibold tracking-widest bg-white/10 dark:bg-gray-800/40 backdrop-blur-md border border-white/20 text-gray-200 px-3 py-1.5 rounded-xl shadow-lg">
+              <div className="font-mono text-base font-semibold tracking-widest bg-white/60 dark:bg-gray-800/50 backdrop-blur-md border border-white/80 dark:border-white/20 text-gray-900 dark:text-gray-200 px-3 py-1.5 rounded-xl shadow-lg">
                 {time.toLocaleTimeString("en-GB")}
               </div>
             )}
             <button
               onClick={toggleTheme}
-              className="p-2 bg-white/10 dark:bg-gray-800/40 backdrop-blur-md border border-white/20 rounded-xl shadow-lg hover:bg-white/20 transition-all flex-shrink-0"
+              className="p-2 bg-white/60 dark:bg-gray-800/50 backdrop-blur-md border border-white/80 dark:border-white/20 rounded-xl shadow-lg hover:bg-white/80 dark:hover:bg-white/20 transition-all flex-shrink-0"
+              title="Ganti Mode Terang / Gelap"
             >
               {isDarkMode ? "☀️" : "🌙"}
             </button>
@@ -429,19 +442,24 @@ export default function AdminController() {
             {/* HALAMAN 1: APP CONTROLLER */}
             <div className="w-full flex-shrink-0 px-1 overflow-y-auto sm:overflow-visible pb-4 pr-2 custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="group relative bg-[#111827]/60 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-xl hover:bg-[#111827]/80 transition-all duration-300 flex flex-col justify-between">
+                {/* Card 1: Toko Roti Amira */}
+                <div className="group relative bg-white/70 dark:bg-[#111827]/65 backdrop-blur-xl border border-white/80 dark:border-white/10 p-6 rounded-3xl shadow-xl hover:bg-white/80 dark:hover:bg-[#111827]/80 transition-all duration-300 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start mb-4">
-                      <h2 className="text-lg font-bold flex items-center gap-2 text-white">
+                      <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
                         🍞 Toko Roti Amira
                       </h2>
                       <span
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider border ${statusAmira ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}`}
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider border ${
+                          statusAmira
+                            ? "bg-green-500/20 text-green-800 dark:text-green-400 border-green-500/30"
+                            : "bg-red-500/20 text-red-800 dark:text-red-400 border-red-500/30"
+                        }`}
                       >
                         {statusAmira ? "ONLINE" : "OFFLINE"}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+                    <p className="text-xs text-gray-700 dark:text-gray-400 mb-3 leading-relaxed">
                       Aplikasi e-commerce dan profil toko roti.
                     </p>
                     <div className="mb-6">
@@ -449,15 +467,15 @@ export default function AdminController() {
                         href="https://amira-breadshop.vercel.app/"
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                        className="inline-flex items-center text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors"
                       >
                         Buka Website{" "}
                         <span className="ml-1 text-[10px]">&#8599;</span>
                       </a>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center border-t border-gray-700/50 pt-5">
-                    <span className="text-xs font-semibold tracking-wide text-gray-400">
+                  <div className="flex justify-between items-center border-t border-gray-300 dark:border-gray-700/50 pt-5">
+                    <span className="text-xs font-semibold tracking-wide text-gray-800 dark:text-gray-400">
                       {loadingApp === "Toko Roti Amira"
                         ? "Menyimpan..."
                         : "Status Aplikasi"}
@@ -472,24 +490,29 @@ export default function AdminController() {
                           handleToggleApp("Toko Roti Amira", statusAmira, e)
                         }
                       />
-                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                      <div className="w-11 h-6 bg-gray-400 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                     </label>
                   </div>
                 </div>
 
-                <div className="group relative bg-[#111827]/60 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-xl hover:bg-[#111827]/80 transition-all duration-300 flex flex-col justify-between">
+                {/* Card 2: QR Absensi */}
+                <div className="group relative bg-white/70 dark:bg-[#111827]/65 backdrop-blur-xl border border-white/80 dark:border-white/10 p-6 rounded-3xl shadow-xl hover:bg-white/80 dark:hover:bg-[#111827]/80 transition-all duration-300 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start mb-4">
-                      <h2 className="text-lg font-bold flex items-center gap-2 text-white">
+                      <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
                         📷 QR Absensi
                       </h2>
                       <span
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider border ${statusQr ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}`}
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider border ${
+                          statusQr
+                            ? "bg-green-500/20 text-green-800 dark:text-green-400 border-green-500/30"
+                            : "bg-red-500/20 text-red-800 dark:text-red-400 border-red-500/30"
+                        }`}
                       >
                         {statusQr ? "ONLINE" : "OFFLINE"}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+                    <p className="text-xs text-gray-700 dark:text-gray-400 mb-3 leading-relaxed">
                       Sistem absensi pegawai menggunakan QR Code.
                     </p>
                     <div className="mb-6">
@@ -497,15 +520,15 @@ export default function AdminController() {
                         href="https://qr-absen-altop.vercel.app/admin-qr.html"
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                        className="inline-flex items-center text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors"
                       >
                         Buka Panel Admin QR{" "}
                         <span className="ml-1 text-[10px]">&#8599;</span>
                       </a>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center border-t border-gray-700/50 pt-5">
-                    <span className="text-xs font-semibold tracking-wide text-gray-400">
+                  <div className="flex justify-between items-center border-t border-gray-300 dark:border-gray-700/50 pt-5">
+                    <span className="text-xs font-semibold tracking-wide text-gray-800 dark:text-gray-400">
                       {loadingApp === "QR Absensi"
                         ? "Menyimpan..."
                         : "Status Aplikasi"}
@@ -520,24 +543,29 @@ export default function AdminController() {
                           handleToggleApp("QR Absensi", statusQr, e)
                         }
                       />
-                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                      <div className="w-11 h-6 bg-gray-400 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                     </label>
                   </div>
                 </div>
 
-                <div className="group relative bg-[#111827]/60 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-xl hover:bg-[#111827]/80 transition-all duration-300 flex flex-col justify-between">
+                {/* Card 3: Monitoring Alker */}
+                <div className="group relative bg-white/70 dark:bg-[#111827]/65 backdrop-blur-xl border border-white/80 dark:border-white/10 p-6 rounded-3xl shadow-xl hover:bg-white/80 dark:hover:bg-[#111827]/80 transition-all duration-300 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start mb-4">
-                      <h2 className="text-lg font-bold flex items-center gap-2 text-white">
+                      <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
                         📈 Monitoring Alker
                       </h2>
                       <span
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider border ${statusAlker ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}`}
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider border ${
+                          statusAlker
+                            ? "bg-green-500/20 text-green-800 dark:text-green-400 border-green-500/30"
+                            : "bg-red-500/20 text-red-800 dark:text-red-400 border-red-500/30"
+                        }`}
                       >
                         {statusAlker ? "ONLINE" : "OFFLINE"}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+                    <p className="text-xs text-gray-700 dark:text-gray-400 mb-3 leading-relaxed">
                       Sistem monitoring alat kerja teknisi.
                     </p>
                     <div className="mb-6 flex flex-col gap-2">
@@ -545,7 +573,7 @@ export default function AdminController() {
                         href="https://monitoring-alker.vercel.app/admin-login"
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                        className="inline-flex items-center text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors"
                       >
                         Buka Login Admin{" "}
                         <span className="ml-1 text-[10px]">&#8599;</span>
@@ -554,15 +582,15 @@ export default function AdminController() {
                         href="https://monitoring-alker.vercel.app/loker/loker-001"
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                        className="inline-flex items-center text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors"
                       >
                         Buka Akses Teknisi{" "}
                         <span className="ml-1 text-[10px]">&#8599;</span>
                       </a>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center border-t border-gray-700/50 pt-5">
-                    <span className="text-xs font-semibold tracking-wide text-gray-400">
+                  <div className="flex justify-between items-center border-t border-gray-300 dark:border-gray-700/50 pt-5">
+                    <span className="text-xs font-semibold tracking-wide text-gray-800 dark:text-gray-400">
                       {loadingApp === "Monitoring Alker"
                         ? "Menyimpan..."
                         : "Status Aplikasi"}
@@ -577,24 +605,29 @@ export default function AdminController() {
                           handleToggleApp("Monitoring Alker", statusAlker, e)
                         }
                       />
-                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                      <div className="w-11 h-6 bg-gray-400 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                     </label>
                   </div>
                 </div>
 
-                <div className="group relative bg-[#111827]/60 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-xl hover:bg-[#111827]/80 transition-all duration-300 flex flex-col justify-between">
+                {/* Card 4: Willy Portfolio */}
+                <div className="group relative bg-white/70 dark:bg-[#111827]/65 backdrop-blur-xl border border-white/80 dark:border-white/10 p-6 rounded-3xl shadow-xl hover:bg-white/80 dark:hover:bg-[#111827]/80 transition-all duration-300 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start mb-4">
-                      <h2 className="text-lg font-bold flex items-center gap-2 text-white">
+                      <h2 className="text-lg font-bold flex items-center gap-2 text-gray-900 dark:text-white">
                         💼 Willy Portfolio
                       </h2>
                       <span
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider border ${statusPortfolio ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}`}
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider border ${
+                          statusPortfolio
+                            ? "bg-green-500/20 text-green-800 dark:text-green-400 border-green-500/30"
+                            : "bg-red-500/20 text-red-800 dark:text-red-400 border-red-500/30"
+                        }`}
                       >
                         {statusPortfolio ? "ONLINE" : "OFFLINE"}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+                    <p className="text-xs text-gray-700 dark:text-gray-400 mb-3 leading-relaxed">
                       Website portofolio personal Willy.
                     </p>
                     <div className="mb-6">
@@ -602,15 +635,15 @@ export default function AdminController() {
                         href="https://willy-portfolio-three.vercel.app/"
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                        className="inline-flex items-center text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors"
                       >
                         Buka Portfolio{" "}
                         <span className="ml-1 text-[10px]">&#8599;</span>
                       </a>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center border-t border-gray-700/50 pt-5">
-                    <span className="text-xs font-semibold tracking-wide text-gray-400">
+                  <div className="flex justify-between items-center border-t border-gray-300 dark:border-gray-700/50 pt-5">
+                    <span className="text-xs font-semibold tracking-wide text-gray-800 dark:text-gray-400">
                       {loadingApp === "Willy Portfolio"
                         ? "Menyimpan..."
                         : "Status Aplikasi"}
@@ -625,7 +658,7 @@ export default function AdminController() {
                           handleToggleApp("Willy Portfolio", statusPortfolio, e)
                         }
                       />
-                      <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                      <div className="w-11 h-6 bg-gray-400 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
                     </label>
                   </div>
                 </div>
@@ -634,11 +667,11 @@ export default function AdminController() {
 
             {/* HALAMAN 2: MANAJEMEN KLIEN */}
             <div className="w-full flex-shrink-0 px-1 overflow-y-auto pb-8 pr-2 custom-scrollbar">
-              <div className="bg-[#111827]/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-xl p-6 sm:p-8 min-h-[60vh]">
+              <div className="bg-white/75 dark:bg-[#111827]/65 backdrop-blur-xl border border-white/80 dark:border-white/10 rounded-3xl shadow-xl p-6 sm:p-8 min-h-[60vh] transition-colors duration-300">
                 {/* Header Tabel */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                   <div>
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                       🏢 Manajemen Klien & Lisensi
                     </h2>
                   </div>
@@ -652,8 +685,10 @@ export default function AdminController() {
 
                 {!statusQr && (
                   <div className="bg-red-500/20 border border-red-500/30 p-4 rounded-xl mb-6 flex items-start gap-3">
-                    <span className="text-red-400 text-lg">⚠️</span>
-                    <p className="text-xs text-red-300 font-medium">
+                    <span className="text-red-600 dark:text-red-400 text-lg">
+                      ⚠️
+                    </span>
+                    <p className="text-xs text-red-800 dark:text-red-300 font-medium">
                       Master QR Absensi sedang OFFLINE. Semua akses klien
                       otomatis ditangguhkan dari sisi server utama meskipun
                       status lisensi mereka aktif.
@@ -661,38 +696,56 @@ export default function AdminController() {
                   </div>
                 )}
 
-                {/* BARU: BAR PENCARIAN & DROPDOWN JUMLAH DATA */}
+                {/* BAR PENCARIAN & DROPDOWN JUMLAH DATA */}
                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4 mt-2">
                   <input
                     type="text"
                     placeholder="🔍 Cari Invoice / Nama / WA / Paket..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm transition-all shadow-inner"
+                    className="w-full sm:w-72 px-4 py-2.5 rounded-xl bg-white/80 dark:bg-white/5 border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm transition-all shadow-inner"
                   />
-                  <div className="flex items-center gap-3 text-sm text-gray-400 font-semibold bg-white/5 px-4 py-2 rounded-xl border border-white/10 w-full sm:w-auto justify-between sm:justify-start">
+                  <div className="flex items-center gap-3 text-sm text-gray-700 dark:text-gray-400 font-semibold bg-white/80 dark:bg-white/5 px-4 py-2 rounded-xl border border-gray-300 dark:border-white/10 w-full sm:w-auto justify-between sm:justify-start">
                     <span>Tampilkan:</span>
                     <select
                       value={itemsPerPage}
                       onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                      className="bg-transparent border-none text-emerald-400 focus:outline-none cursor-pointer font-bold"
+                      className="bg-transparent border-none text-emerald-600 dark:text-emerald-400 focus:outline-none cursor-pointer font-bold"
                     >
-                      <option value={1} className="bg-gray-800">
+                      <option
+                        value={1}
+                        className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      >
                         1
                       </option>
-                      <option value={4} className="bg-gray-800">
+                      <option
+                        value={4}
+                        className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      >
                         4
                       </option>
-                      <option value={10} className="bg-gray-800">
+                      <option
+                        value={10}
+                        className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      >
                         10
                       </option>
-                      <option value={50} className="bg-gray-800">
+                      <option
+                        value={50}
+                        className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      >
                         50
                       </option>
-                      <option value={100} className="bg-gray-800">
+                      <option
+                        value={100}
+                        className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      >
                         100
                       </option>
-                      <option value={1000} className="bg-gray-800">
+                      <option
+                        value={1000}
+                        className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      >
                         1000
                       </option>
                     </select>
@@ -701,14 +754,14 @@ export default function AdminController() {
                 </div>
 
                 {/* Tabel Klien */}
-                <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/20">
+                <div className="overflow-x-auto rounded-xl border border-gray-300 dark:border-white/10 bg-white/50 dark:bg-black/20">
                   {isLoadingClients ? (
-                    <div className="p-10 text-center text-gray-400 text-sm font-semibold animate-pulse">
+                    <div className="p-10 text-center text-gray-600 dark:text-gray-400 text-sm font-semibold animate-pulse">
                       Memuat Data Lisensi dari Vercel KV...
                     </div>
                   ) : (
-                    <table className="w-full text-left text-sm text-gray-300 min-w-[700px]">
-                      <thead className="text-xs uppercase bg-white/5 text-gray-400 border-b border-white/10">
+                    <table className="w-full text-left text-sm text-gray-800 dark:text-gray-300 min-w-[700px]">
+                      <thead className="text-xs uppercase bg-gray-200/70 dark:bg-white/5 text-gray-700 dark:text-gray-400 border-b border-gray-300 dark:border-white/10">
                         <tr>
                           <th className="px-6 py-4 font-bold tracking-wider">
                             Invoice / PIC
@@ -730,22 +783,21 @@ export default function AdminController() {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5">
+                      <tbody className="divide-y divide-gray-300/60 dark:divide-white/5">
                         {currentClients.map((client) => (
                           <tr
                             key={client.id}
-                            className="hover:bg-white/5 transition-colors"
+                            className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
                           >
                             <td className="px-6 py-4">
-                              <div className="font-bold text-white text-base">
+                              <div className="font-bold text-gray-900 dark:text-white text-base">
                                 {client.companyName}
                               </div>
-                              <div className="text-[10px] text-gray-500 mt-1 font-mono">
+                              <div className="text-[10px] text-gray-600 dark:text-gray-500 mt-1 font-mono">
                                 {client.id} | PIC: {client.picName}
                               </div>
-                              {/* Menampilkan Tanggal Order (Jika Ada) */}
                               {client.createdAt && (
-                                <div className="text-[9px] text-gray-400 mt-0.5">
+                                <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">
                                   {new Date(
                                     client.createdAt,
                                   ).toLocaleDateString("id-ID", {
@@ -759,8 +811,8 @@ export default function AdminController() {
                                 </div>
                               )}
                             </td>
-                            <td className="px-6 py-4 font-mono text-xs flex items-center gap-1.5 mt-2">
-                              <span className="text-green-400 text-[10px]">
+                            <td className="px-6 py-4 font-mono text-xs flex items-center gap-1.5 mt-2 text-gray-800 dark:text-gray-300">
+                              <span className="text-green-600 dark:text-green-400 text-[10px]">
                                 💬
                               </span>{" "}
                               {client.whatsapp}
@@ -770,15 +822,17 @@ export default function AdminController() {
                                 <span
                                   className={`px-2.5 py-1 text-[10px] font-bold rounded-md border whitespace-nowrap ${
                                     client.planType === "Permanen"
-                                      ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                                      ? "bg-purple-500/15 text-purple-800 dark:text-purple-400 border-purple-500/30"
                                       : client.planType === "Custom"
-                                        ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                                        : "bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
+                                        ? "bg-blue-500/15 text-blue-800 dark:text-blue-400 border-blue-500/30"
+                                        : "bg-indigo-500/15 text-indigo-800 dark:text-indigo-400 border-indigo-500/30"
                                   }`}
                                 >
                                   {client.planType}{" "}
-                                  <span className="mx-1 text-gray-500">|</span>{" "}
-                                  <span className="text-gray-300">
+                                  <span className="mx-1 text-gray-400 dark:text-gray-500">
+                                    |
+                                  </span>{" "}
+                                  <span className="text-gray-800 dark:text-gray-300">
                                     {client.category || "QR Absensi"}
                                   </span>
                                 </span>
@@ -789,7 +843,7 @@ export default function AdminController() {
                                     href={getClientAppUrl(client)}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-1"
+                                    className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300 hover:underline flex items-center gap-1"
                                   >
                                     🔗 Buka Web Klien &#8599;
                                   </a>
@@ -803,7 +857,7 @@ export default function AdminController() {
                                         `Link akses untuk ${client.companyName} berhasil disalin!`,
                                       );
                                     }}
-                                    className="text-[10px] text-gray-400 hover:text-white bg-white/5 px-1.5 py-0.5 rounded border border-white/10"
+                                    className="text-[10px] text-gray-700 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded border border-gray-300 dark:border-white/10"
                                     title="Salin Link Klien"
                                   >
                                     Copy
@@ -811,32 +865,34 @@ export default function AdminController() {
                                 </div>
                               </div>
                             </td>
-                            <td
-                              className={`px-6 py-4 text-xs font-semibold ${client.dueDate === "Menunggu Pembayaran" ? "text-amber-400" : "text-gray-400"}`}
-                            >
-                              {client.planType === "Permanen" ? (
-                                <span className="text-purple-400 bg-purple-500/10 px-2 py-1 rounded-md">
-                                  Lifetime / Selamanya
+                            <td className="px-6 py-4 text-xs">
+                              {client.dueDate === "Menunggu Pembayaran" ? (
+                                <span className="text-amber-700 dark:text-amber-400 font-bold">
+                                  Menunggu Pembayaran
+                                </span>
+                              ) : client.dueDate === "Lunas" ? (
+                                <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                                  ✔ Lunas
                                 </span>
                               ) : (
-                                // Jika Bulanan/Custom, tampilkan tanggal dari Vercel
-                                client.dueDate
+                                <span className="text-gray-800 dark:text-gray-300 font-mono">
+                                  {client.dueDate}
+                                </span>
                               )}
                             </td>
                             <td className="px-6 py-4">
                               {client.isActive ? (
-                                <span className="text-[10px] font-black tracking-widest text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-full">
+                                <span className="text-[10px] font-black tracking-widest text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 dark:bg-emerald-400/10 px-3 py-1.5 rounded-full">
                                   AKTIF
                                 </span>
                               ) : (
-                                <span className="text-[10px] font-black tracking-widest text-red-400 bg-red-400/10 px-3 py-1.5 rounded-full">
+                                <span className="text-[10px] font-black tracking-widest text-red-700 dark:text-red-400 bg-red-500/15 dark:bg-red-400/10 px-3 py-1.5 rounded-full">
                                   DITANGGUHKAN
                                 </span>
                               )}
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center justify-center gap-3">
-                                {/* Tombol Delete */}
                                 <button
                                   onClick={() =>
                                     handleDeleteClient(
@@ -844,27 +900,24 @@ export default function AdminController() {
                                       client.picName,
                                     )
                                   }
-                                  className="text-gray-400 hover:text-red-400 transition-colors p-1"
+                                  className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors p-1"
                                   title="Hapus Klien Permanen"
                                 >
                                   🗑️
                                 </button>
 
-                                {/* Tombol Edit yang sudah ada */}
                                 <button
                                   onClick={() => {
                                     setEditingClient(client);
                                     setIsEditModalOpen(true);
                                   }}
-                                  className="text-gray-400 hover:text-blue-400 transition-colors p-1"
+                                  className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-1"
                                   title="Edit Data Pelanggan"
                                 >
                                   ✏️
                                 </button>
 
-                                {/* Saklar Akses */}
                                 <label className="relative inline-flex items-center cursor-pointer ml-1">
-                                  {/* (Biarkan saklar bawaan lu persis seperti aslinya) */}
                                   <input
                                     type="checkbox"
                                     className="sr-only peer"
@@ -876,7 +929,7 @@ export default function AdminController() {
                                       )
                                     }
                                   />
-                                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                  <div className="w-11 h-6 bg-gray-400 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
                                 </label>
                               </div>
                             </td>
@@ -886,7 +939,7 @@ export default function AdminController() {
                           <tr>
                             <td
                               colSpan={6}
-                              className="px-6 py-12 text-center text-gray-500 text-sm"
+                              className="px-6 py-12 text-center text-gray-600 dark:text-gray-500 text-sm"
                             >
                               Belum ada data klien yang terdaftar.
                             </td>
@@ -899,21 +952,21 @@ export default function AdminController() {
 
                 {/* KONTROL PAGINATION */}
                 {!isLoadingClients && filteredClients.length > 0 && (
-                  <div className="flex flex-col sm:flex-row justify-between items-center mt-6 pt-4 border-t border-white/10 gap-4">
-                    <span className="text-xs text-gray-400 font-medium">
+                  <div className="flex flex-col sm:flex-row justify-between items-center mt-6 pt-4 border-t border-gray-300 dark:border-white/10 gap-4">
+                    <span className="text-xs text-gray-700 dark:text-gray-400 font-medium">
                       Menampilkan{" "}
-                      <span className="text-white font-bold">
+                      <span className="text-gray-900 dark:text-white font-bold">
                         {startIndex + 1}
                       </span>{" "}
                       -{" "}
-                      <span className="text-white font-bold">
+                      <span className="text-gray-900 dark:text-white font-bold">
                         {Math.min(
                           startIndex + itemsPerPage,
                           filteredClients.length,
                         )}
                       </span>{" "}
                       dari total{" "}
-                      <span className="text-emerald-400 font-bold">
+                      <span className="text-emerald-700 dark:text-emerald-400 font-bold">
                         {filteredClients.length}
                       </span>{" "}
                       data
@@ -924,11 +977,11 @@ export default function AdminController() {
                           setCurrentPage((prev) => Math.max(prev - 1, 1))
                         }
                         disabled={currentPage === 1}
-                        className="px-4 py-2 text-xs font-bold rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        className="px-4 py-2 text-xs font-bold rounded-xl bg-white/80 dark:bg-white/5 border border-gray-300 dark:border-white/10 text-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                       >
                         ⬅ Prev
                       </button>
-                      <span className="px-4 py-2 text-xs font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                      <span className="px-4 py-2 text-xs font-black text-emerald-700 dark:text-emerald-400 bg-emerald-500/15 dark:bg-emerald-500/10 border border-emerald-500/30 dark:border-emerald-500/20 rounded-xl">
                         {currentPage} / {totalPages}
                       </span>
                       <button
@@ -938,7 +991,7 @@ export default function AdminController() {
                           )
                         }
                         disabled={currentPage === totalPages}
-                        className="px-4 py-2 text-xs font-bold rounded-xl bg-white/5 border border-white/10 text-gray-300 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                        className="px-4 py-2 text-xs font-bold rounded-xl bg-white/80 dark:bg-white/5 border border-gray-300 dark:border-white/10 text-gray-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                       >
                         Next ➡
                       </button>
@@ -948,9 +1001,9 @@ export default function AdminController() {
                 {!isLoadingClients &&
                   filteredClients.length === 0 &&
                   clients.length > 0 && (
-                    <div className="text-center text-sm text-gray-500 mt-8 font-medium bg-white/5 p-4 rounded-xl border border-white/10">
-                      Tidak ada data klien yang cocok dengan pencarian "
-                      {searchTerm}"
+                    <div className="text-center text-sm text-gray-700 dark:text-gray-400 mt-8 font-medium bg-white/60 dark:bg-white/5 p-4 rounded-xl border border-gray-300 dark:border-white/10">
+                      Tidak ada data klien yang cocok dengan pencarian &ldquo;
+                      {searchTerm}&rdquo;
                     </div>
                   )}
               </div>
@@ -962,21 +1015,21 @@ export default function AdminController() {
       {/* MODAL TAMBAH KLIEN MANUAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#1e293b] w-full max-w-md rounded-2xl shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-emerald-500/20 border-b border-emerald-500/30 p-5 flex justify-between items-center">
-              <h3 className="text-white font-bold text-lg flex items-center gap-2">
+          <div className="bg-white dark:bg-[#1e293b] w-full max-w-md rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-emerald-500/15 dark:bg-emerald-500/20 border-b border-emerald-500/30 p-5 flex justify-between items-center">
+              <h3 className="text-gray-900 dark:text-white font-bold text-lg flex items-center gap-2">
                 ✨ Tambah Klien Baru
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-xl leading-none"
               >
                 &times;
               </button>
             </div>
             <form onSubmit={handleAddClient} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
                   Nama Perusahaan / Bisnis *
                 </label>
                 <input
@@ -986,12 +1039,12 @@ export default function AdminController() {
                   onChange={(e) =>
                     setNewClient({ ...newClient, companyName: e.target.value })
                   }
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500"
                   placeholder="Contoh: PT Sukses Makmur"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
                   Nama PIC (Pemesan) *
                 </label>
                 <input
@@ -1001,12 +1054,12 @@ export default function AdminController() {
                   onChange={(e) =>
                     setNewClient({ ...newClient, picName: e.target.value })
                   }
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500"
                   placeholder="Contoh: Budi Santoso"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
                   Nomor WhatsApp *
                 </label>
                 <input
@@ -1016,13 +1069,13 @@ export default function AdminController() {
                   onChange={(e) =>
                     setNewClient({ ...newClient, whatsapp: e.target.value })
                   }
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500"
                   placeholder="0812xxxxxxxxx"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
                     Tipe Paket
                   </label>
                   <select
@@ -1033,21 +1086,30 @@ export default function AdminController() {
                         planType: e.target.value as any,
                       })
                     }
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
                   >
-                    <option value="Bulanan" className="bg-gray-800">
+                    <option
+                      value="Bulanan"
+                      className="bg-white dark:bg-gray-800"
+                    >
                       Bulanan
                     </option>
-                    <option value="Permanen" className="bg-gray-800">
+                    <option
+                      value="Permanen"
+                      className="bg-white dark:bg-gray-800"
+                    >
                       Lisensi Permanen
                     </option>
-                    <option value="Custom" className="bg-gray-800">
+                    <option
+                      value="Custom"
+                      className="bg-white dark:bg-gray-800"
+                    >
                       Custom App
                     </option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
                     Aplikasi / Layanan
                   </label>
                   <input
@@ -1056,13 +1118,13 @@ export default function AdminController() {
                     onChange={(e) =>
                       setNewClient({ ...newClient, category: e.target.value })
                     }
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500"
                     placeholder="QR Absensi"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
                   Jatuh Tempo
                 </label>
                 <input
@@ -1074,14 +1136,14 @@ export default function AdminController() {
                   onChange={(e) =>
                     setNewClient({ ...newClient, dueDate: e.target.value })
                   }
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50"
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50"
                 />
               </div>
               <div className="pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="w-1/3 py-3 rounded-xl text-sm font-semibold bg-white/5 text-gray-300 hover:bg-white/10 transition-colors"
+                  className="w-1/3 py-3 rounded-xl text-sm font-semibold bg-gray-200 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-white/10 transition-colors"
                 >
                   Batal
                 </button>
@@ -1100,21 +1162,21 @@ export default function AdminController() {
       {/* MODAL EDIT KLIEN */}
       {isEditModalOpen && editingClient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#1e293b] w-full max-w-md rounded-2xl shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="bg-blue-500/20 border-b border-blue-500/30 p-5 flex justify-between items-center">
-              <h3 className="text-white font-bold text-lg flex items-center gap-2">
+          <div className="bg-white dark:bg-[#1e293b] w-full max-w-md rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-blue-500/15 dark:bg-blue-500/20 border-b border-blue-500/30 p-5 flex justify-between items-center">
+              <h3 className="text-gray-900 dark:text-white font-bold text-lg flex items-center gap-2">
                 ✏️ Edit Data Pelanggan
               </h3>
               <button
                 onClick={() => setIsEditModalOpen(false)}
-                className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-xl leading-none"
               >
                 &times;
               </button>
             </div>
             <form onSubmit={handleUpdateClient} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
                   Nama Perusahaan / Bisnis *
                 </label>
                 <input
@@ -1127,11 +1189,11 @@ export default function AdminController() {
                       companyName: e.target.value,
                     })
                   }
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
                   Nama PIC *
                 </label>
                 <input
@@ -1144,11 +1206,11 @@ export default function AdminController() {
                       picName: e.target.value,
                     })
                   }
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
                   Nomor WhatsApp *
                 </label>
                 <input
@@ -1161,12 +1223,12 @@ export default function AdminController() {
                       whatsapp: e.target.value,
                     })
                   }
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
                     Tipe Paket
                   </label>
                   <select
@@ -1177,21 +1239,30 @@ export default function AdminController() {
                         planType: e.target.value as any,
                       })
                     }
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 cursor-pointer"
                   >
-                    <option value="Bulanan" className="bg-gray-800">
+                    <option
+                      value="Bulanan"
+                      className="bg-white dark:bg-gray-800"
+                    >
                       Bulanan
                     </option>
-                    <option value="Permanen" className="bg-gray-800">
+                    <option
+                      value="Permanen"
+                      className="bg-white dark:bg-gray-800"
+                    >
                       Lisensi Permanen
                     </option>
-                    <option value="Custom" className="bg-gray-800">
+                    <option
+                      value="Custom"
+                      className="bg-white dark:bg-gray-800"
+                    >
                       Custom App
                     </option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
                     Aplikasi
                   </label>
                   <input
@@ -1203,20 +1274,20 @@ export default function AdminController() {
                         category: e.target.value,
                       })
                     }
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500"
+                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">
-                  Jatuh Tempo
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5 uppercase">
+                  Jatuh Tempo (Atau ketik Lunas / Tanggal)
                 </label>
                 <input
-                  type="date"
+                  type="text"
                   disabled={editingClient.planType === "Permanen"}
                   value={
                     editingClient.planType === "Permanen"
-                      ? ""
+                      ? "Lifetime"
                       : editingClient.dueDate
                   }
                   onChange={(e) =>
@@ -1225,14 +1296,15 @@ export default function AdminController() {
                       dueDate: e.target.value,
                     })
                   }
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                  placeholder="Contoh: Lunas atau 2026-12-30"
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-300 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
                 />
               </div>
               <div className="pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="w-1/3 py-3 rounded-xl text-sm font-semibold bg-white/5 text-gray-300 hover:bg-white/10 transition-colors"
+                  className="w-1/3 py-3 rounded-xl text-sm font-semibold bg-gray-200 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-white/10 transition-colors"
                 >
                   Batal
                 </button>
